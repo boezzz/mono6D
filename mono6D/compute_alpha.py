@@ -161,7 +161,7 @@ def process_alpha_map(orientation_map):
     dilated = cv2.dilate(eroded, kernel)
     
     # 3. Thresholding
-    threshold = 0.3
+    threshold = 0.5
     thresholded = dilated * (dilated > threshold)
     
     # 4. Gaussian blur
@@ -174,8 +174,8 @@ def process_alpha_map(orientation_map):
     sigmoid = 1.0 / (1.0 + np.exp(-k * (smoothed - c)))
     
     # Clean up very small values and saturate high values
-    # sigmoid[sigmoid < 0.1] = 0
-    # sigmoid[sigmoid > 0.6] = 1
+    sigmoid[sigmoid < 0.1] = 0
+    sigmoid[sigmoid > 0.8] = 1
     
     # Invert values: 
     # 1 (white) = fully opaque

@@ -43,6 +43,28 @@ def create_inpainted_layer(filename):
     d_encoded = d_encoded.astype(np.float32) / 255.0
     
     alpha = cv2.imread(f"{in_path}_BGA.png")
+    if alpha is None:
+        raise ValueError(f"Could not read alpha image: {in_path}_BGA.png")
+    
+    # Check dimensions and resize if necessary
+    rgb_height, rgb_width = rgb_tex.shape[:2]
+    depth_height, depth_width = d_encoded.shape[:2]
+    alpha_height, alpha_width = alpha.shape[:2]
+    
+    print(f"RGB dimensions: {rgb_width}x{rgb_height}")
+    print(f"Depth dimensions: {depth_width}x{depth_height}")
+    print(f"Alpha dimensions: {alpha_width}x{alpha_height}")
+    
+    # Ensure depth matches RGB dimensions
+    if rgb_width != depth_width or rgb_height != depth_height:
+        print(f"Resizing depth to match RGB dimensions: {rgb_width}x{rgb_height}")
+        d_encoded = cv2.resize(d_encoded, (rgb_width, rgb_height))
+    
+    # Always resize alpha to match RGB dimensions (fix for the IndexError)
+    if rgb_width != alpha_width or rgb_height != alpha_height:
+        print(f"Resizing alpha to match RGB dimensions: {rgb_width}x{rgb_height}")
+        alpha = cv2.resize(alpha, (rgb_width, rgb_height))
+    
     alpha = alpha.astype(np.float32) / 255.0
     alpha = alpha[:,:,0]  # Use first channel
     

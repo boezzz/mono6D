@@ -1,5 +1,6 @@
 // main.js - RGBD Video Viewer for Quest
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 
@@ -12,13 +13,14 @@ import movSimpleVertexShader from './shaders/VertexShader-mov_simple.js';
 import movSimpleFragmentShader from './shaders/FragmentShader-mov_simple.js';
 
 // Scene setup
-let scene, camera, renderer;
+let scene, camera, renderer, controls;
 let controllerGrip1, controllerGrip2;
 let rgbdPlayer;
 
 // add filename here to be included in the web app
-const filenames = ['pier', 'cafeteria', 'shore', 'bishop03_1'];
+const filenames = ['pier', 'cafeteria', 'shore', 'bishop03_1', 'forest_360_4K'];
 let currentFileIndex = 0;
+let updateVideoUI = null;
 
 // array to store all assets, dirty might delete
 let allAssets = [];
@@ -30,11 +32,20 @@ function init() {
   
   // Create camera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 1.7, 0);
+  camera.position.set(0, 0, 0.1);
   // camera added automatically
   
   // Set up renderer with proper transparency handling
   setupRenderer();
+
+  // Add OrbitControls for non-VR navigation
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.enableZoom = false;
+  controls.enablePan = false;
+  controls.rotateSpeed = -0.5; // Invert for "looking around" feel
+  controls.target.set(0, 0, 0);
   
   // Handle window resize
   window.addEventListener('resize', onWindowResize, false);
@@ -89,6 +100,7 @@ function loadCurrentVideo() {
 function cycleToNextVideo() {
   currentFileIndex = (currentFileIndex + 1) % filenames.length;
   loadCurrentVideo();
+  if (updateVideoUI) updateVideoUI();
 }
 
 // TODO: maybe optional, pending delete
@@ -521,6 +533,10 @@ function setupRenderer() {
 
 // animate loop
 function animate() {
+  if (controls && !renderer.xr.isPresenting) {
+    controls.update();
+  }
+
   if (rgbdPlayer) {
     rgbdPlayer.update(camera);
   }
@@ -535,36 +551,70 @@ function addUI() {
   container.style.bottom = '20px';
   container.style.left = '20px';
   container.style.color = 'white';
-  container.style.background = 'rgba(0,0,0,0.5)';
-  container.style.padding = '10px';
-  container.style.borderRadius = '5px';
+  container.style.backgroundColor = 'rgba(0,0,0,0.7)';
+  container.style.padding = '15px';
+  container.style.borderRadius = '8px';
   container.style.fontFamily = 'Arial, sans-serif';
-  
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '10px';
+  container.style.zIndex = '1000';
+
   const currentVideoText = document.createElement('div');
-  currentVideoText.id = 'current-video';
   currentVideoText.innerText = `Current Video: ${filenames[currentFileIndex]}`;
-  
-  const nextButton = document.createElement('button');
-  nextButton.innerText = 'Next Video';
-  nextButton.style.marginTop = '10px';
-  nextButton.style.padding = '5px 10px';
-  nextButton.addEventListener('click', cycleToNextVideo);
-  
+  currentVideoText.style.fontWeight = 'bold';
   container.appendChild(currentVideoText);
-  container.appendChild(nextButton);
-  document.body.appendChild(container);
-  
-  const updateUI = () => {
-    const currentVideoElement = document.getElementById('current-video');
-    if (currentVideoElement) {
-      currentVideoElement.innerText = `Current Video: ${filenames[currentFileIndex]}`;
-    }
+
+  // Controls
+  const controls = document.createElement('div');
+  controls.style.display = 'flex';
+  controls.style.gap = '10px';
+
+  const playBtn = document.createElement('button');
+  playBtn.innerText = 'Play / Pause';
+  playBtn.style.cursor = 'pointer';
+  playBtn.style.padding = '5px 10px';
+  playBtn.onclick = () => {
+    if (rgbdPlayer) rgbdPlayer.togglePlayback();
   };
+  controls.appendChild(playBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.innerText = 'Next Video';
+  nextBtn.style.cursor = 'pointer';
+  nextBtn.style.padding = '5px 10px';
+  nextBtn.onclick = cycleToNextVideo;
+  controls.appendChild(nextBtn);
   
-  const originalCycleToNextVideo = cycleToNextVideo;
-  cycleToNextVideo = () => {
-    originalCycleToNextVideo();
-    updateUI();
+  container.appendChild(controls);
+
+  // Layer Controls
+  const layersDiv = document.createElement('div');
+  layersDiv.style.display = 'flex';
+  layersDiv.style.alignItems = 'center';
+  layersDiv.style.gap = '5px';
+  
+  const layersLabel = document.createElement('span');
+  layersLabel.innerText = 'Layers: ';
+  layersDiv.appendChild(layersLabel);
+
+  [1, 2, 3].forEach(count => {
+    const btn = document.createElement('button');
+    btn.innerText = count;
+    btn.style.cursor = 'pointer';
+    btn.style.padding = '2px 8px';
+    btn.onclick = () => {
+      if (rgbdPlayer) rgbdPlayer.setLayerCount(count);
+    };
+    layersDiv.appendChild(btn);
+  });
+  
+  container.appendChild(layersDiv);
+
+  document.body.appendChild(container);
+
+  updateVideoUI = () => {
+    currentVideoText.innerText = `Current Video: ${filenames[currentFileIndex]}`;
   };
 }
 

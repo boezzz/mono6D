@@ -9,6 +9,7 @@ from mesh_orientation import compute_triangle_orientations
 from compute_alpha import compute_transparency_values
 from extrapolated_layer import create_extrapolated_layer
 from inpainted_layer import create_inpainted_layer
+from process_video_depth import process_video_depth
 
 def main_process(filename):
     """
@@ -41,6 +42,8 @@ def main_process(filename):
 
     # Step 0: generate depth for video if none
     # TODO:
+    if not os.path.exists(f"_input_videos/{filename}_depth.mp4"):
+        process_video_depth(f"_input_videos/{filename}.mp4", f"_input_videos/{filename}_depth.mp4")
 
 
     # TODO: disable for now
